@@ -1,0 +1,14 @@
+{
+  "name": "three-card-tarot",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.js",
+  "description": "Electron app for three-card (past-present-future) tarot reading",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}
+

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>タロット占い</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>タロット占い</h1>
+    </header>
+
+    <main>
+      <div id="stage">
+        <div id="dim" class="dim" aria-hidden="true"></div>
+        <div id="deck" class="deck" aria-label="カードの山">
+          <div class="pilecard"></div>
+          <div class="pilecard"></div>
+          <div class="pilecard"></div>
+          <div class="pilecard"></div>
+          <div class="pilecard"></div>
+        </div>
+
+        <section class="board">
+          <div class="slot" data-pos="past">
+            <div class="label">過去</div>
+            <div class="card">
+              <div class="inner">
+                <div class="face back">
+                  <img src="../img/back.png" alt="back" />
+                </div>
+                <div class="face front">
+                  <img alt="" />
+                </div>
+              </div>
+            </div>
+            <div class="info"></div>
+          </div>
+          <div class="slot" data-pos="present">
+            <div class="label">現在</div>
+            <div class="card">
+              <div class="inner">
+                <div class="face back">
+                  <img src="../img/back.png" alt="back" />
+                </div>
+                <div class="face front">
+                  <img alt="" />
+                </div>
+              </div>
+            </div>
+            <div class="info"></div>
+          </div>
+          <div class="slot" data-pos="future">
+            <div class="label">未来</div>
+            <div class="card">
+              <div class="inner">
+                <div class="face back">
+                  <img src="../img/back.png" alt="back" />
+                </div>
+                <div class="face front">
+                  <img alt="" />
+                </div>
+              </div>
+            </div>
+            <div class="info"></div>
+          </div>
+        </section>
+                <div id="startMenu" class="start-menu" aria-modal="true" role="dialog">
+          <div class="panel">
+            <h2>スタートメニュー</h2>
+            <div class="options">
+              <button id="btnThree" class="primary">三枚引きを始める</button>
+              <button id="btnOne">ワンオラクルを始める</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="actions" class="actions" aria-hidden="true">
+          <button id="btnMenu">スタートメニュー</button>
+          <button id="btnRetry" class="primary">もう一度</button>
+        </div></div>
+    </main>
+
+    <script src="tarot-data.js"></script>
+    <script type="module" src="renderer.js"></script>
+  </body>
+  </html>

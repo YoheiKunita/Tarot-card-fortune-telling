@@ -1,0 +1,14 @@
+@startuml
+[*] --> StartMenu
+StartMenu --> GamePlay : SELECT_NEW
+StartMenu --> Settings  : OPEN_SETTINGS
+StartMenu --> Exit      : QUIT
+Settings  --> StartMenu : BACK
+GamePlay  --> 現在過去未来: `start:run` (`three`)
+GamePlay  --> 今日の運勢:`start:run` (`one`)
+現在過去未来  --> GameEnd   : SESSION_END, REQUEST_EXIT
+今日の運勢  --> GameEnd   : SESSION_END, REQUEST_EXIT
+GameEnd   --> StartMenu : RETURN_TO_MENU
+GameEnd   --> ReStart : `start:run`
+Exit --> [*]
+@enduml
