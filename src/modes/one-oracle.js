@@ -16,11 +16,11 @@ export function createOneOracleMode({ startBtn, slots, deckEl, dimEl, blank }) {
     const infoEl = slot.querySelector('.info');
     const imgEl = slot.querySelector('.face.front img');
     const toEl = deckEl.querySelector('.pilecard:last-child') || deckEl;
-    const hasShown = cardEl.classList.contains('revealed') || infoEl.textContent.trim() !== '';
+    const hasShown = !cardEl.classList.contains('hidden') || cardEl.classList.contains('revealed') || infoEl.textContent.trim() !== '';
     dimEl.classList.remove('active');
     if (!hasShown) return;
     cardEl.classList.add('hidden');
-    await createFlying(cardEl, toEl);
+    await createFlying(cardEl, toEl, { timeScale: 0.7 });
     cardEl.classList.remove('revealed', 'reversed');
     infoEl.textContent = '';
     infoEl.classList.remove('show');
@@ -79,8 +79,6 @@ export function createOneOracleMode({ startBtn, slots, deckEl, dimEl, blank }) {
     slot.style.cursor = 'pointer';
     slot.onclick = async () => {
       if (cardEl.classList.contains('revealed')) return;
-      dimEl.classList.add('active');
-      await sleep(120);
       cardEl.classList.add('revealed');
       const infoEl = slot.querySelector('.info');
       const oriLabel = pick.reversed ? '逆位置' : '正位置';

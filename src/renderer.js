@@ -239,23 +239,55 @@ import { createOneOracleMode } from './modes/one-oracle.js';
       case 1: return [C(50,50)];
       case 2: return [C(35,50), C(65,50)];
       case 3: return [C(30,50), C(50,50), C(70,50)];
-      case 4: return [C(50,35), C(50,65), C(30,50), C(70,50)];
-      case 5: return [C(50,50), C(50,30), C(50,70), C(30,50), C(70,50)];
-      case 6: return [C(30,40), C(50,40), C(70,40), C(30,65), C(50,65), C(70,65)];
-      case 7: { const cx=50, cy=55, r=25; const ang=[160,130,100,70,40,10,-10]; return ang.map(a=>C(cx + r*Math.cos(a*Math.PI/180), cy + r*Math.sin(a*Math.PI/180))); }
-      case 8: return [C(35,30),C(35,45),C(35,60),C(35,75), C(65,30),C(65,45),C(65,60),C(65,75)];
-      case 9: return [C(30,30),C(50,30),C(70,30), C(30,50),C(50,50),C(70,50), C(30,70),C(50,70),C(70,70)];
-      case 10: return [C(45,50), C(45,50,90), C(45,70), C(25,50), C(45,30), C(65,50), C(80,75), C(80,65), C(80,55), C(80,45)];
+      case 4: return [C(50,30), C(50,70), C(25,50), C(75,50)];
+      case 5: return [
+        // Increase vertical spacing between top and bottom cards
+        C(50,50), C(50,20), C(50,80),
+        { ...C(25,50), side: 'L' },
+        { ...C(75,50), side: 'R' }
+      ];
+      case 6: return [
+        { ...C(24,35), side: 'L' }, C(50,35), { ...C(76,35), side: 'R' },
+        { ...C(24,75), side: 'L' }, C(50,75), { ...C(76,75), side: 'R' }
+      ];
+      case 7: {
+        const cx=50, cy=55, r=32;
+        const ang=[160,130,100,70,40,10,-10]; // left -> right
+        return ang.map((a,i)=>{
+          let rr = r;
+          // Slightly pull positions 2–5 (index 1..4) toward center
+          if (i>=1 && i<=4) rr = r * 0.9;
+          let x = cx + rr*Math.cos(a*Math.PI/180);
+          let y = cy + rr*Math.sin(a*Math.PI/180);
+          // Raise the 7th card (index 6) a bit
+          if (i===6) y -= 3;
+          return C(x,y);
+        });
+      }
+      case 8: return [
+        { ...C(30,25), side: 'L' }, { ...C(30,45), side: 'L' }, { ...C(30,65), side: 'L' }, { ...C(30,85), side: 'L' },
+        { ...C(70,25), side: 'R' }, { ...C(70,45), side: 'R' }, { ...C(70,65), side: 'R' }, { ...C(70,85), side: 'R' }
+      ];
+      case 9: return [
+        { ...C(24,24), side: 'L' }, C(50,24), { ...C(76,24), side: 'R' },
+        { ...C(24,50), side: 'L' }, C(50,50), { ...C(76,50), side: 'R' },
+        { ...C(24,76), side: 'L' }, C(50,76), { ...C(76,76), side: 'R' }
+      ];
+      case 10: return [C(22,50), C(38,30), C(38,70), C(54,30), C(54,70), C(78,50), C(70,85), C(70,70), C(70,55), C(70,40)];
       default: return Array.from({length:n},(_,i)=>C(20+(i%5)*15, 35+Math.floor(i/5)*25));
     }
   }
 
   function positionSlots(slots, layout){
-    const w=143, h=234;
+    // Read current card size from CSS vars to stay in sync with styling
+    const rootStyles = getComputedStyle(document.documentElement);
+    const w = parseFloat(rootStyles.getPropertyValue('--card-w')) || 143;
+    const h = parseFloat(rootStyles.getPropertyValue('--card-h')) || 234;
     slots.forEach((s,i)=>{
       const p = layout[i]||{left:50,top:50,rot:0};
       s.style.position='absolute';
-      s.style.left=`calc(${p.left}% - ${w/2}px)`; s.style.top=`calc(${p.top}% - ${h/2}px)`;
+      const dx = (typeof p.dx === 'number') ? p.dx : (p.side ? (p.side==='L' ? w/2 : p.side==='R' ? -w/2 : 0) : 0);
+      s.style.left=`calc(${p.left}% - ${w/2}px + ${dx}px)`; s.style.top=`calc(${p.top}% - ${h/2}px)`;
       // Apply base rotation via CSS variable so flip animation can compose with it
       const card = s.querySelector('.card');
       card.style.setProperty('--base-rot', p.rot ? `rotate(${p.rot}deg)` : 'rotate(0deg)');
@@ -297,7 +329,8 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   }
 
   async function returnOppPile(opts = {}){
-    const timeScale = Math.max(0.05, Math.min(4, opts.timeScale ?? 1));
+    // Default return is 30% faster
+    const timeScale = Math.max(0.05, Math.min(4, opts.timeScale ?? 0.7));
     const opp = ensureOppPile();
     const cards = Array.from(opp.querySelectorAll('.pilecard'));
     for (let i = cards.length - 1; i >= 0; i--){
@@ -310,25 +343,30 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   }
 
   async function returnAll(slots, opts = {}){
-    const timeScale = Math.max(0.05, Math.min(4, opts.timeScale ?? 1));
-    const need = slots.some(s=> s.querySelector('.card').classList.contains('revealed') || s.querySelector('.info').textContent.trim()!=='');
-    dimEl.classList.remove('active'); if(!need) return;
-    for(let i=slots.length-1;i>=0;i--){
-      const slot=slots[i];
-      const cardEl=slot.querySelector('.card');
-      const infoEl=slot.querySelector('.info');
-      const imgEl=slot.querySelector('.face.front img');
-      const toEl = deckEl.querySelector('.pilecard:last-child')||deckEl;
-      // flip back then return quickly
+    // Default return is 30% faster
+    const timeScale = Math.max(0.05, Math.min(4, opts.timeScale ?? 0.7));
+    dimEl.classList.remove('active');
+    const list = slots.filter(s => {
+      const c = s.querySelector('.card');
+      const info = s.querySelector('.info');
+      return !c.classList.contains('hidden') || c.classList.contains('revealed') || (info && info.textContent.trim() !== '');
+    });
+    if (list.length === 0) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const slot = list[i];
+      const cardEl = slot.querySelector('.card');
+      const infoEl = slot.querySelector('.info');
+      const imgEl = slot.querySelector('.face.front img');
+      const toEl = deckEl.querySelector('.pilecard:last-child') || deckEl;
       cardEl.classList.remove('revealed');
       cardEl.classList.add('hidden');
-      await createFlying(cardEl,toEl,{ timeScale });
+      await createFlying(cardEl, toEl, { timeScale });
       cardEl.classList.remove('reversed');
-      infoEl.textContent='';
+      infoEl.textContent = '';
       infoEl.classList.remove('show');
-      imgEl.src=BLANK_DATA_URI;
-      slot.onclick=null; slot.style.cursor='';
-      await sleep(Math.round(60*timeScale));
+      imgEl.src = BLANK_DATA_URI;
+      slot.onclick = null; slot.style.cursor = '';
+      await sleep(Math.round(60 * timeScale));
     }
   }
 

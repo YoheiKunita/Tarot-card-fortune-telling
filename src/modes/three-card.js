@@ -22,13 +22,16 @@ export function createThreeCardMode({ startBtn, slots, deckEl, dimEl, blank }) {
     if (cardEl.classList.contains('revealed')) return;
     cardEl.classList.add('revealed');
     setInfo(slot, card);
-    dimEl.classList.add('active');
     slot.onclick = null;
     slot.style.cursor = '';
   }
 
   async function returnCardsToDeck() {
-    const needReturn = slots.some(slot => slot.querySelector('.card').classList.contains('revealed') || slot.querySelector('.info').textContent.trim() !== '');
+    const needReturn = slots.some(slot => {
+      const c = slot.querySelector('.card');
+      const info = slot.querySelector('.info');
+      return !c.classList.contains('hidden') || c.classList.contains('revealed') || (info && info.textContent.trim() !== '');
+    });
     dimEl.classList.remove('active');
     if (!needReturn) return;
     for (let i = slots.length - 1; i >= 0; i--) {
@@ -39,7 +42,8 @@ export function createThreeCardMode({ startBtn, slots, deckEl, dimEl, blank }) {
       const toEl = deckEl.querySelector('.pilecard:last-child') || deckEl;
       const rectRef = cardEl;
       cardEl.classList.add('hidden');
-      await createFlying(rectRef, toEl);
+      // Return 30% faster
+      await createFlying(rectRef, toEl, { timeScale: 0.7 });
       cardEl.classList.remove('revealed', 'reversed');
       infoEl.textContent = '';
       infoEl.classList.remove('show');

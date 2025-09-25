@@ -9,23 +9,27 @@
   --info-duration: 160ms;   /* caption fade */
   --dim-duration: 175ms;    /* dim fade */
   /* Card sizing */
-  --card-w: 143px;  /* 110 * 1.3 */
-  --card-h: 234px;  /* 180 * 1.3 */
-  --card-hover-scale: 1.54; /* ~220/143 to match previous size */
+  /* 20% smaller base size */
+  --card-w: 114px;  /* 143 * 0.8 */
+  --card-h: 187px;  /* 234 * 0.8 */
+  /* Keep enlarged hover size approximately the same: 1.54 / 0.8 ≈ 1.925 */
+  --card-hover-scale: 1.925;
 }
 
 *{ box-sizing: border-box; }
 html, body { height: 100%; }
+html{ background: var(--bg); }
 body{
   margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-  background: var(--bg) url('../img/background.png') center/cover fixed no-repeat;
+  /* Avoid background-attachment: fixed seam; render as normal background */
+  background: var(--bg) url('../img/background.png') center/cover no-repeat;
   color: var(--fg);
 }
 header h1{ display:none; }
+/* Hide in-app header to avoid a dark band under native title bar */
 header{
-  display:flex; align-items:center; justify-content:space-between;
-  padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: none;
 }
 h1{ font-size: 20px; margin:0; letter-spacing: 0.03em; }
 button{
@@ -39,7 +43,8 @@ main{ padding: 24px; }
 #stage{ position: relative; min-height: 780px; padding-bottom: 160px; }
 
 .dim{ position:absolute; inset:0; background: rgba(0,0,0,0.35); opacity:0; transition: opacity var(--dim-duration) ease; pointer-events: none; }
-.dim.active{ opacity: 1; }
+/* Do not visually dim the background on reveal */
+.dim.active{ opacity: 0; }
 
 .deck{ position: absolute; left: 24px; bottom: 24px; transform: none; width: calc(var(--card-w) + 50px); height: calc(var(--card-h) + 50px); }
 .deck .pilecard{
