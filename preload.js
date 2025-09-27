@@ -13,5 +13,11 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_evt, kind) => cb(kind);
     ipcRenderer.on('start:run', handler);
     return () => ipcRenderer.off('start:run', handler);
+  },
+  onOpenSettings: (cb) => {
+    if (typeof cb !== 'function') return () => {};
+    const handler = () => cb();
+    ipcRenderer.on('settings:open', handler);
+    return () => ipcRenderer.off('settings:open', handler);
   }
 });

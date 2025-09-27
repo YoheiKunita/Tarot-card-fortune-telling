@@ -8,6 +8,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   const slots = Array.from(document.querySelectorAll('.slot'));
   const deckEl = document.getElementById('deck');
   const dimEl = document.getElementById('dim');
+  const headerEl = document.querySelector('header');
 
   const startMenu = document.getElementById('startMenu');
   const btnThree = document.getElementById('btnThree');
@@ -56,6 +57,89 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   // Default mode prepared but not started; show start menu first
   switchMode('three');
   showStartMenu();
+
+  // --- Settings UI (API Key) ---
+  try {
+    // Add Settings button inside Start Menu options
+    const btnSettings = document.createElement('button');
+    btnSettings.id = 'btnSettings';
+    btnSettings.textContent = '設定';
+    btnSettings.title = '設定 (OpenAI API Keyなど)';
+    const optionsEl = startMenu ? startMenu.querySelector('.options') : null;
+    if (optionsEl) optionsEl.appendChild(btnSettings);
+
+    // Build modal
+    const settings = document.createElement('div');
+    settings.id = 'settings';
+    settings.className = 'start-menu';
+    settings.style.display = 'none';
+    settings.setAttribute('aria-modal', 'true');
+    settings.setAttribute('role', 'dialog');
+    settings.innerHTML = `
+      <div class="panel">
+        <h2>設定</h2>
+        <div class="options" style="gap:12px; align-items:stretch">
+          <label style="display:flex;flex-direction:column;gap:6px">
+            <span>OpenAI API Key</span>
+            <input id="inpApiKey" type="password" placeholder="sk-..." />
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px">
+            <span>Model</span>
+            <input id="inpModel" type="text" placeholder="gpt-4o-mini" />
+          </label>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px">
+            <button id="btnSettingsCancel">キャンセル</button>
+            <button id="btnSettingsSave" class="primary">保存</button>
+          </div>
+        </div>
+      </div>`;
+    const stage = document.getElementById('stage') || document.body;
+    stage.appendChild(settings);
+
+    const inpApiKey = settings.querySelector('#inpApiKey');
+    const inpModel = settings.querySelector('#inpModel');
+    const btnSettingsCancel = settings.querySelector('#btnSettingsCancel');
+    const btnSettingsSave = settings.querySelector('#btnSettingsSave');
+
+    function loadSettings() {
+      try {
+        inpApiKey.value = localStorage.getItem('openai.apiKey') || '';
+        inpModel.value = localStorage.getItem('openai.model') || 'gpt-4o-mini';
+      } catch (_) {}
+    }
+    function openSettings() {
+      loadSettings();
+      // Hide start menu while editing settings
+      try { startMenu.style.display = 'none'; } catch(_) {}
+      settings.style.display = 'flex';
+    }
+    function closeSettings() {
+      settings.style.display = 'none';
+      // Return to start menu after closing settings
+      try { showStartMenu(); } catch(_) {}
+    }
+
+    btnSettings?.addEventListener('click', openSettings);
+    btnSettingsCancel?.addEventListener('click', closeSettings);
+    btnSettingsSave?.addEventListener('click', () => {
+      try {
+        localStorage.setItem('openai.apiKey', inpApiKey.value.trim());
+        localStorage.setItem('openai.model', inpModel.value.trim() || 'gpt-4o-mini');
+      } catch (_) {}
+      closeSettings();
+    });
+
+    // Keyboard shortcut: Ctrl+,
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); }
+      if (e.key === 'Escape' && settings.style.display !== 'none') { e.preventDefault(); closeSettings(); }
+    });
+
+    // If main process triggers settings:open, open here (preload bridge)
+    if (window.api && typeof window.api.onOpenSettings === 'function') {
+      window.api.onOpenSettings(() => openSettings());
+    }
+  } catch (e) { /* ignore UI errors */ }
 
   // Start menu selections
   function startRun(kind) {
@@ -149,7 +233,15 @@ import { createOneOracleMode } from './modes/one-oracle.js';
         <div class="settings">
           <label>アニメ速度（50%〜120%）
             <input id="speedRange" type="range" min="0.5" max="1.2" step="0.05" />
-            <span id="speedVal"></span>
+          <span id="speedVal"></span>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+            <span>OpenAI API Key</span>
+            <input id="inpApiKey" type="password" placeholder="sk-..." />
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px">
+            <span>Model</span>
+            <input id="inpModel" type="text" placeholder="gpt-4o-mini" />
           </label>
         </div>
         <div class="options">
@@ -183,6 +275,8 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     const btnExitNo = startMenu.querySelector('#btnExitNo');
     const speedRange = startMenu.querySelector('#speedRange');
     const speedVal = startMenu.querySelector('#speedVal');
+    const inpApiKey = startMenu.querySelector('#inpApiKey');
+    const inpModel = startMenu.querySelector('#inpModel');
     const btnSaveSettings = startMenu.querySelector('#btnSaveSettings');
     const btnCancelSettings = startMenu.querySelector('#btnCancelSettings');
 
@@ -198,11 +292,21 @@ import { createOneOracleMode } from './modes/one-oracle.js';
       const cur = parseFloat(localStorage.getItem('speedMult')||'0.7');
       if (speedRange){ speedRange.value = `${cur}`; }
       if (speedVal){ speedVal.textContent = `${Math.round(cur*100)}%`; }
+      // Load OpenAI settings
+      try {
+        if (inpApiKey) inpApiKey.value = localStorage.getItem('openai.apiKey') || '';
+        if (inpModel) inpModel.value = localStorage.getItem('openai.model') || 'gpt-4o-mini';
+      } catch(_) {}
       speedRange?.addEventListener('input', () => { speedVal.textContent = `${Math.round(parseFloat(speedRange.value)*100)}%`; });
       btnSaveSettings?.addEventListener('click', () => {
         const v = parseFloat(speedRange.value);
         localStorage.setItem('speedMult', `${v}`);
         applySpeedToCSSVars(v);
+        // Save OpenAI settings
+        try {
+          if (inpApiKey) localStorage.setItem('openai.apiKey', inpApiKey.value.trim());
+          if (inpModel) localStorage.setItem('openai.model', (inpModel.value.trim()||'gpt-4o-mini'));
+        } catch(_) {}
         showPanel('panelMain');
       });
       btnCancelSettings?.addEventListener('click', () => showPanel('panelMain'));
