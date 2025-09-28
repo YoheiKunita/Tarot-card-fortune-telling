@@ -140,6 +140,16 @@ main{ padding: 24px; }
 .actions.show{ display:flex; }
 .actions button.primary{ background: var(--acc); color:#1b1b1b; }
 
+/* Adviser output panel */
+.adviser-out{
+  position: fixed; left: 20px; bottom: 20px; z-index: 850;
+  max-width: 520px; padding: 12px 14px; border-radius: 12px;
+  background: rgba(20,24,40,0.92); color: var(--fg);
+  border:1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  line-height: 1.6; font-size: 14px; white-space: pre-wrap;
+}
+
 /* Dynamic absolute board for flexible spreads */
 .absolute-board{ position: relative; min-height: 640px; max-width: 1100px; margin: 0 auto; padding-top: 20px; }
 .absolute-board .slot{ position: absolute; }

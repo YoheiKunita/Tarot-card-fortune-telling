@@ -157,6 +157,13 @@ export function setFrontOnly(slotEl, card, reversed, blankDataURI) {
   imgEl.src = `../img/${card.file}`;
   infoEl.textContent = '';
   infoEl.classList.remove('show');
+  // Store metadata for adviser integration
+  try {
+    slotEl.dataset.cardName = card.en || card.name || '';
+    slotEl.dataset.cardJa = card.name || '';
+    slotEl.dataset.position = reversed ? 'reversed' : 'upright';
+    slotEl.dataset.slot = slotEl.getAttribute('data-pos') || '';
+  } catch(_) {}
 }
 
 export function buildPositionText(card, pos, reversed) {

@@ -11,7 +11,7 @@
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
-const { createClient, GenerateReadingUseCase } = require(path.join("..", "..", "lib", "tarot-adviser"));
+const { createClient, GenerateReadingUseCase } = require(path.join("..", "..", "..", "lib", "tarot-adviser"));
 
 function printHelp() {
   const help = `Tarot Adviser CLI\n\n` +

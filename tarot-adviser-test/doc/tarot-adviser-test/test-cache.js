@@ -1,7 +1,7 @@
 "use strict";
 
 const path = require("path");
-const { createClient, GenerateReadingUseCase } = require(path.join("..", "..", "lib", "tarot-adviser"));
+const { createClient, GenerateReadingUseCase } = require(path.join("..", "..", "..", "lib", "tarot-adviser"));
 
 (async () => {
   const llm = createClient("stub", { mode: "valid" });
@@ -26,4 +26,3 @@ const { createClient, GenerateReadingUseCase } = require(path.join("..", "..", "
   }
   console.log("[PASS] cache test");
 })();
-

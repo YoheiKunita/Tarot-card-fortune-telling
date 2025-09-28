@@ -16,6 +16,8 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   const actions = document.getElementById('actions');
   const btnMenu = document.getElementById('btnMenu');
   const btnRetry = document.getElementById('btnRetry');
+  const btnAdvise = document.getElementById('btnAdvise');
+  const adviserOutEl = document.getElementById('adviserOut');
 
   // fallback for back images
   Array.from(document.querySelectorAll('.face.back img')).forEach(img => {
@@ -167,6 +169,46 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     if (currentKind === 'one' && revealed >= 1) showActions();
   });
   observer.observe(boardEl, { subtree: true, attributes: true, attributeFilter: ['class'] });
+
+  // Adviser: generate AI summary/advice from revealed cards
+  async function handleAdviseClick(){
+    try {
+      if (!window.adviser || typeof window.adviser.generate !== 'function') {
+        alert('アドバイス機能が利用できません');
+        return;
+      }
+      const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+      const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
+      if (!revealedSlots.length){ alert('カードをめくってから実行してください'); return; }
+      const q = window.prompt('質問（任意）を入力してください', '') || '';
+      const cards = revealedSlots.map(sl => ({
+        name: sl.dataset.cardName || 'Unknown',
+        position: (sl.dataset.position === 'reversed') ? 'reversed' : 'upright',
+        slot: sl.dataset.slot || '',
+      }));
+      const spread = (currentKind === 'one')
+        ? { name: 'One Card', slots: ['present'] }
+        : { name: 'Three Card', slots: ['past','present','future'] };
+      const apiKey = (()=>{ try { return localStorage.getItem('openai.apiKey') || ''; } catch(_) { return ''; } })();
+      const model = (()=>{ try { return localStorage.getItem('openai.model') || 'gpt-4o-mini'; } catch(_) { return 'gpt-4o-mini'; } })();
+      const backend = apiKey ? 'openai' : 'stub';
+      if (btnAdvise) { btnAdvise.disabled = true; btnAdvise.textContent = '生成中…'; }
+      if (adviserOutEl) { adviserOutEl.style.display = 'block'; adviserOutEl.textContent = '生成中…'; }
+      const res = await window.adviser.generate({ question: q, cards, spread, backend, apiKey, model });
+      const summary = res && res.reading && res.reading.summary ? String(res.reading.summary) : '';
+      const valid = !!(res && res.valid);
+      if (adviserOutEl) {
+        adviserOutEl.style.display = 'block';
+        adviserOutEl.textContent = summary || (valid ? '結果を取得しました' : 'フォールバック結果');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('アドバイスの生成に失敗しました');
+    } finally {
+      if (btnAdvise) { btnAdvise.disabled = false; btnAdvise.textContent = 'AIアドバイス'; }
+    }
+  }
+  if (btnAdvise) btnAdvise.addEventListener('click', handleAdviseClick);
 })();
 
 // --- Dynamic UI and spreads override per UI.txt and tarot_spread_1to10.txt ---
