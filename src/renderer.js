@@ -209,6 +209,66 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     }
   }
   if (btnAdvise) btnAdvise.addEventListener('click', handleAdviseClick);
+
+  // Override with robust handler: no alert; always fallback to screen output
+  async function robustHandleAdviseClick(){
+    const makeStub = (q, cards) => {
+      const mapped = cards.map(c => ({
+        cardName: c.name || 'Unknown',
+        position: c.position === 'reversed' ? 'reversed' : 'upright',
+        meaning: `${c.name||'Card'} (${c.position||'upright'}) は「${q||'あなたの状況'}」について内省を促します。`,
+        advice: 'まずは小さな一歩から。'
+      }));
+      return { reading: { summary: `フォールバック生成: ${q||'ご質問'}について考えを整理しましょう。`, cards: mapped }, valid: true };
+    };
+    try {
+      const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+      const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
+      if (!revealedSlots.length){ if (adviserOutEl) { adviserOutEl.style.display='block'; adviserOutEl.textContent='カードをめくってから実行してください'; } return; }
+      const q = window.prompt('お悩み（任意）を入力してください', '') || '';
+      const cards = revealedSlots.map(sl => ({
+        name: sl.dataset.cardName || 'Unknown',
+        position: (sl.dataset.position === 'reversed') ? 'reversed' : 'upright',
+        slot: sl.dataset.slot || '',
+      }));
+      const spread = (currentKind === 'one')
+        ? { name: 'One Card', slots: ['present'] }
+        : { name: 'Three Card', slots: ['past','present','future'] };
+      const apiKey = (()=>{ try { return localStorage.getItem('openai.apiKey') || ''; } catch(_) { return ''; } })();
+      const model = (()=>{ try { return localStorage.getItem('openai.model') || 'gpt-4o-mini'; } catch(_) { return 'gpt-4o-mini'; } })();
+      const backend = apiKey ? 'openai' : 'stub';
+      if (btnAdvise) { btnAdvise.disabled = true; btnAdvise.textContent = '生成中…'; }
+      if (adviserOutEl) { adviserOutEl.style.display = 'block'; adviserOutEl.textContent = '生成中…'; }
+      let res;
+      if (!window.adviser || typeof window.adviser.generate !== 'function') {
+        res = makeStub(q, cards);
+      } else {
+        res = await window.adviser.generate({ question: q, cards, spread, backend, apiKey, model, locale: 'ja' });
+      }
+      const summary = res && res.reading && res.reading.summary ? String(res.reading.summary) : '';
+      const valid = !!(res && res.valid);
+      if (adviserOutEl) {
+        adviserOutEl.style.display = 'block';
+        adviserOutEl.textContent = summary || (valid ? '結果を取得しました' : 'フォールバック結果');
+      }
+    } catch (e) {
+      console.error(e);
+      try {
+        const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+        const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
+        const cards = revealedSlots.map(sl => ({
+          name: sl.dataset.cardName || 'Unknown',
+          position: (sl.dataset.position === 'reversed') ? 'reversed' : 'upright',
+          slot: sl.dataset.slot || '',
+        }));
+        const res = makeStub('', cards);
+        if (adviserOutEl) { adviserOutEl.style.display='block'; adviserOutEl.textContent = res.reading.summary; }
+      } catch {}
+    } finally {
+      if (btnAdvise) { btnAdvise.disabled = false; btnAdvise.textContent = 'AIアドバイス'; }
+    }
+  }
+  try { if (btnAdvise) { btnAdvise.removeEventListener('click', handleAdviseClick); btnAdvise.addEventListener('click', robustHandleAdviseClick); } } catch {}
 })();
 
 // --- Dynamic UI and spreads override per UI.txt and tarot_spread_1to10.txt ---
@@ -605,4 +665,61 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   // Electron integration
   if (window.api?.onStartRun){ window.api.onStartRun(kind => { hideStartMenu(); startSpread(kind==='one'?1:3); }); }
   if (window.api?.onModeChange){ window.api.onModeChange(kind => { lastCount = (kind==='one')?1:3; }); }
+})();
+
+// --- Final override: ensure advice works without window.prompt (Electron unsupported)
+(function(){
+  try {
+    const old = document.getElementById('btnAdvise');
+    if (!old) return;
+    const adviserOutEl = document.getElementById('adviserOut');
+    const btn = old.cloneNode(true);
+    old.parentNode.replaceChild(btn, old);
+    btn.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      try {
+        const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+        const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
+        if (!revealedSlots.length) {
+          if (adviserOutEl) { adviserOutEl.style.display='block'; adviserOutEl.textContent='カードをめくってから実行してください'; }
+          return;
+        }
+        const topicEl = document.getElementById('readingTopic');
+        const q = (topicEl && topicEl.value) ? topicEl.value : (function(){ try { return localStorage.getItem('readingTopic') || '' } catch(_) { return '' } })();
+        const cards = revealedSlots.map(sl => ({
+          name: sl.dataset.cardName || 'Unknown',
+          position: (sl.dataset.position === 'reversed') ? 'reversed' : 'upright',
+          slot: sl.dataset.slot || '',
+        }));
+        const totalSlots = slotsAll.length;
+        const spread = (totalSlots <= 1)
+          ? { name: 'One Card', slots: ['present'] }
+          : { name: 'Three Card', slots: ['past','present','future'] };
+        const apiKey = (()=>{ try { return localStorage.getItem('openai.apiKey') || ''; } catch(_) { return ''; } })();
+        const model = (()=>{ try { return localStorage.getItem('openai.model') || 'gpt-4o-mini'; } catch(_) { return 'gpt-4o-mini'; } })();
+        const backend = apiKey ? 'openai' : 'stub';
+        btn.disabled = true; btn.textContent = '生成中…';
+        if (adviserOutEl) { adviserOutEl.style.display = 'block'; adviserOutEl.textContent = '生成中…'; }
+        let res;
+        try {
+          res = await (window.adviser && window.adviser.generate ? window.adviser.generate({ question: q, cards, spread, backend, apiKey, model, locale: 'ja' }) : null);
+        } catch (e) {
+          res = null;
+          try { console.warn('adviser.generate failed, will fallback:', e && e.message ? e.message : e); } catch {}
+        }
+        if (!res || !res.reading) {
+          const mapped = cards.map(c => ({
+            cardName: c.name || 'Unknown', position: c.position,
+            meaning: `${c.name||'Card'} (${c.position||'upright'}) は「${q||'あなたの状況'}」について内省を促します。`,
+            advice: 'まずは小さな一歩から。'
+          }));
+          res = { valid: true, reading: { summary: `フォールバック生成: ${q||'ご質問'}について考えを整理しましょう。`, cards: mapped }, meta: { backend: 'stub' } };
+        }
+        const summary = res.reading && res.reading.summary ? String(res.reading.summary) : '結果を取得しました';
+        if (adviserOutEl) { adviserOutEl.style.display='block'; adviserOutEl.textContent = summary; }
+      } finally {
+        btn.disabled = false; btn.textContent = 'AIアドバイス';
+      }
+    });
+  } catch {}
 })();

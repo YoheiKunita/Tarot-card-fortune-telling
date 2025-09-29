@@ -7,14 +7,20 @@ function createWindow() {
     height: 950,
     webPreferences: {
       contextIsolation: true,
+      // 明示的にサンドボックスを無効化（preloadでNodeのrequireを使うため）
+      sandbox: false,
+      nodeIntegration: false,
       preload: path.join(__dirname, 'preload.js')
     },
-    show: false
+    show: false,
+    autoHideMenuBar: false
   });
 
   win.once('ready-to-show', () => win.show());
   win.loadFile('src/index.html');
-  Menu.setApplicationMenu(null);
+  // Ensure menu bar is visible
+  try { buildMenu(win); } catch (_) {}
+  try { win.setMenuBarVisibility(true); } catch (_) {}
 }
 
 function buildMenu(win) {

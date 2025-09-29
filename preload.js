@@ -1,6 +1,7 @@
 // Minimal preload to bridge safe events to renderer
 const { contextBridge, ipcRenderer } = require('electron');
 const path = require('path');
+const { AdviserService } = require(path.join(__dirname, 'lib', 'adviser-service'));
 let adviserExports = null;
 try {
   adviserExports = require(path.join(__dirname, 'lib', 'tarot-adviser'));
@@ -8,6 +9,14 @@ try {
   adviserExports = null;
 }
 try { console.log('[preload] adviser module loaded (internal only):', !!adviserExports); } catch(_) {}
+
+// Instantiate service once; preload is long-lived per renderer
+const adviserService = new AdviserService({
+  backend: 'auto',
+  // APIキー/モデルは renderer 側の input で上書き可能
+  adviserExports,
+  logger: console,
+});
 
 contextBridge.exposeInMainWorld('api', {
   onModeChange: (cb) => {
@@ -32,38 +41,23 @@ contextBridge.exposeInMainWorld('api', {
 
 // Adviser API: generate reading from selected cards
 contextBridge.exposeInMainWorld('adviser', {
-  /**
-   * input: { question, cards:[{name,position,slot}], spread:{name,slots}, userId?, backend?, apiKey?, model? }
-   */
+  // 安定契約: 失敗時も resolve（valid:false または stub にフォールバック）
   generate: async (input) => {
     try {
-      if (adviserExports) {
-        const { createClient, GenerateReadingUseCase } = adviserExports;
-        const backend = input.backend || (input.apiKey ? 'openai' : 'stub');
-        const clientOpts = backend === 'openai'
-          ? { apiKey: input.apiKey, model: input.model }
-          : { mode: 'valid' };
-        const llm = createClient(backend, clientOpts);
-        const usecase = new GenerateReadingUseCase({ llmClient: llm });
-        return await usecase.execute({
-          question: input.question || '',
-          cards: input.cards || [],
-          spread: input.spread || null,
-          userId: input.userId || null,
-        });
-      }
+      const res = await adviserService.generate(input || {});
+      return res;
     } catch (e) {
-      try { console.warn('[preload] adviser error, using inline stub:', e && e.message ? e.message : e); } catch(_) {}
+      try { console.warn('[preload] AdviserService fatal error, inline fallback:', e?.message || e); } catch {}
+      // 最終フォールバック（理論上到達しない想定）
+      const question = (input && input.question) || '';
+      const cards = Array.isArray(input && input.cards) ? input.cards : [];
+      const mapped = cards.map(c => ({
+        cardName: c?.name || c?.cardName || 'Unknown',
+        position: c?.position === 'reversed' ? 'reversed' : 'upright',
+        meaning: `${(c?.name||c?.cardName||'Card')} (${c?.position||'upright'}) suggests reflection about "${question||'your situation'}"`,
+        advice: 'Consider small, practical next steps.',
+      }));
+      return { reading: { summary: `Fallback: ${question||'your question'}`, cards: mapped }, valid: true, meta: { inferenceId: 'inline-stub-fatal', durationMs: 0, cached: false, backend: 'stub', reason: 'FATAL' } };
     }
-    // Inline stub fallback (module not available): produce deterministic JSON
-    const question = input.question || '';
-    const cards = Array.isArray(input.cards) ? input.cards : [];
-    const mapped = cards.map(c => ({
-      cardName: c.name || c.cardName || 'Unknown',
-      position: c.position === 'reversed' ? 'reversed' : 'upright',
-      meaning: `${(c.name||c.cardName||'Card')} (${c.position||'upright'}) suggests reflection about "${question||'your situation'}"`,
-      advice: 'Consider small, practical next steps.',
-    }));
-    return { reading: { summary: `A balanced view on: ${question||'your question'}.`, cards: mapped }, valid: true, meta: { inferenceId: 'inline-stub', userId: input.userId||null, durationMs: 0, approxTokens: 0, cached: false, reason: null } };
   }
 });
