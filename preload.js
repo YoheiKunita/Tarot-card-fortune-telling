@@ -31,6 +31,12 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('start:run', handler);
     return () => ipcRenderer.off('start:run', handler);
   },
+  onOpenStartMenu: (cb) => {
+    if (typeof cb !== 'function') return () => {};
+    const handler = () => cb();
+    ipcRenderer.on('menu:start', handler);
+    return () => ipcRenderer.off('menu:start', handler);
+  },
   onOpenSettings: (cb) => {
     if (typeof cb !== 'function') return () => {};
     const handler = () => cb();

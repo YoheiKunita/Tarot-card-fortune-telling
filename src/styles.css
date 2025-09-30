@@ -26,6 +26,13 @@ body{
   background: var(--bg) url('../img/background.png') center/cover no-repeat;
   color: var(--fg);
 }
+/* Cover potential 1px hairline under native menu bar on Windows */
+body::before{
+  content: "";
+  position: fixed; left:0; right:0; top:0; height:1px;
+  background: var(--bg);
+  pointer-events: none; z-index: 2;
+}
 header h1{ display:none; }
 /* Hide in-app header to avoid a dark band under native title bar */
 header{

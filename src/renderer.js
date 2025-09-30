@@ -141,6 +141,9 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     if (window.api && typeof window.api.onOpenSettings === 'function') {
       window.api.onOpenSettings(() => openSettings());
     }
+    if (window.api && typeof window.api.onOpenStartMenu === 'function') {
+      window.api.onOpenStartMenu(() => showStartMenu());
+    }
   } catch (e) { /* ignore UI errors */ }
 
   // Start menu selections

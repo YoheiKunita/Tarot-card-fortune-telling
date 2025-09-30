@@ -7,7 +7,7 @@ function createWindow() {
     height: 950,
     webPreferences: {
       contextIsolation: true,
-      // 明示的にサンドボックスを無効化（preloadでNodeのrequireを使うため）
+      // 明示的にサンドボックスを無効（preloadでNodeのrequireを使うため）
       sandbox: false,
       nodeIntegration: false,
       preload: path.join(__dirname, 'preload.js')
@@ -40,39 +40,22 @@ function buildMenu(win) {
       ]
     }] : []),
     {
-      label: 'スタート…',
-      accelerator: 'Enter',
-      click: () => {
-        const popup = Menu.buildFromTemplate([
-          { label: '三枚引きを占う', click: () => win.webContents.send('start:run', 'three') },
-          { label: 'ワンオラクルを占う', click: () => win.webContents.send('start:run', 'one') }
-        ]);
-        popup.popup({ window: win });
-      }
-    },
-    {
-      label: 'モード',
+      label: 'メニュー',
       submenu: [
         {
-          id: 'mode-three',
-          label: '三枚引き',
-          type: 'radio',
-          checked: true,
-          click: () => win.webContents.send('mode:change', 'three')
+          label: 'スタート',
+          accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N',
+          click: () => { try { win.webContents.send('menu:start'); } catch (_) {} }
         },
         {
-          id: 'mode-one',
-          label: 'ワンオラクル',
-          type: 'radio',
-          click: () => win.webContents.send('mode:change', 'one')
-        }
-      ]
-    },
-    {
-      label: '表示',
-      submenu: [
-        { role: 'reload' },
-        { role: 'toggleDevTools' }
+          label: '設定',
+          accelerator: process.platform === 'darwin' ? 'Cmd+,' : 'Ctrl+,',
+          click: () => { try { win.webContents.send('settings:open'); } catch (_) {} }
+        },
+        { type: 'separator' },
+        (process.platform === 'darwin'
+          ? { label: '終了', role: 'quit' }
+          : { label: '終了', click: () => { try { app.quit(); } catch (_) {} } })
       ]
     }
   ];
@@ -91,3 +74,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
+
