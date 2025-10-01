@@ -167,9 +167,8 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   // Reveal completion watcher
   const boardEl = document.querySelector('.board');
   const observer = new MutationObserver(() => {
-    const revealed = boardEl.querySelectorAll('.card.revealed').length;
-    if (currentKind === 'three' && revealed >= 3) showActions();
-    if (currentKind === 'one' && revealed >= 1) showActions();
+    // Auto-show of actions is handled after reveal completion elsewhere.
+    // No-op here to avoid premature display during dealing/partial reveal.
   });
   observer.observe(boardEl, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
@@ -293,7 +292,34 @@ import { createOneOracleMode } from './modes/one-oracle.js';
 
   function showActions(){ actions?.classList.add('show'); }
   function hideActions(){ actions?.classList.remove('show'); }
-  function showStartMenu(){ actions?.classList.remove('show'); startMenu.style.display = 'flex'; showPanel('panelMain'); }
+  function showStartMenu(){
+    actions?.classList.remove('show');
+    // Hide any advice panels when opening menu
+    try {
+      const adviserOut = document.getElementById('adviserOut');
+      if (adviserOut) { adviserOut.style.display = 'none'; adviserOut.textContent = ''; }
+      const overlay = document.getElementById('adviceOverlay');
+      if (overlay) overlay.style.display = 'none';
+    } catch {}
+    startMenu.style.display = 'flex';
+    showPanel('panelMain');
+    // Ensure a Resume button exists to return to board
+    try {
+      const mainOpts = startMenu.querySelector('#panelMain .options');
+      if (mainOpts) {
+        let resume = startMenu.querySelector('#btnResume');
+        const hasBoard = !!document.querySelector('.board .slot');
+        if (!resume) {
+          resume = document.createElement('button');
+          resume.id = 'btnResume';
+          resume.textContent = '元の画面に戻る';
+          mainOpts.insertBefore(resume, mainOpts.firstChild);
+          resume.addEventListener('click', () => { startMenu.style.display = 'none'; });
+        }
+        resume.style.display = hasBoard ? '' : 'none';
+      }
+    } catch {}
+  }
   function hideStartMenu(){ startMenu.style.display = 'none'; }
 
   function labelForSpread(n){
@@ -587,6 +613,13 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   async function startSpread(n){
     lastCount = n;
     hideActions();
+    // Hide any existing advice output/modal
+    try {
+      const adviserOut = document.getElementById('adviserOut');
+      if (adviserOut) { adviserOut.style.display = 'none'; adviserOut.textContent = ''; }
+      const overlay = document.getElementById('adviceOverlay');
+      if (overlay) overlay.style.display = 'none';
+    } catch {}
     // Return currently shown cards before rebuilding
     const existingSlots = Array.from(boardEl.querySelectorAll('.slot'));
     await returnAll(existingSlots);
@@ -606,6 +639,13 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   if (btnMenu) btnMenu.onclick = () => { showStartMenu(); };
   if (btnRetry) btnRetry.onclick = async () => {
     hideActions();
+    // Hide any existing advice output/modal
+    try {
+      const adviserOut = document.getElementById('adviserOut');
+      if (adviserOut) { adviserOut.style.display = 'none'; adviserOut.textContent = ''; }
+      const overlay = document.getElementById('adviceOverlay');
+      if (overlay) overlay.style.display = 'none';
+    } catch {}
     const existingSlots = Array.from(boardEl.querySelectorAll('.slot'));
     // Return faster (double speed => half duration)
     await returnAll(existingSlots, { timeScale: 0.5 });
@@ -623,6 +663,73 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   // Build new menu and show it
   buildStartMenu();
   startMenu.style.display = 'flex';
+
+  // Post-build adjustments per proposal: labels, quick starts, and action timing
+  try {
+    // Update headings to clear Japanese labels
+    const hMain = startMenu.querySelector('#panelMain h2'); if (hMain) hMain.textContent = 'スタートメニュー';
+    const hSpread = startMenu.querySelector('#panelSpread h2'); if (hSpread) hSpread.textContent = 'カード枚数の選択';
+    const hSettings = startMenu.querySelector('#panelSettings h2'); if (hSettings) hSettings.textContent = '設定';
+
+    // Rebuild main options with quick starts and settings
+    const mainPanel = startMenu.querySelector('#panelMain');
+    const mainOpts = mainPanel?.querySelector('.options');
+    if (mainOpts) {
+      mainOpts.innerHTML = '';
+      const b3 = document.createElement('button'); b3.id = 'btnQuickThree'; b3.className = 'primary'; b3.textContent = '3枚リーディング';
+      const b1 = document.createElement('button'); b1.id = 'btnQuickOne'; b1.textContent = '1枚引き';
+      const bMore = document.createElement('button'); bMore.id = 'btnMore'; bMore.textContent = '詳細な展開を選ぶ…';
+      const bSettings = document.createElement('button'); bSettings.id = 'btnSettings'; bSettings.textContent = '設定';
+      mainOpts.appendChild(b3); mainOpts.appendChild(b1); mainOpts.appendChild(bMore); mainOpts.appendChild(bSettings);
+      b3.onclick = () => { hideStartMenu(); startSpread(3); };
+      b1.onclick = () => { hideStartMenu(); startSpread(1); };
+      bMore.onclick = () => { const p = startMenu.querySelector('#panelSpread'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };
+      bSettings.onclick = () => { const p = startMenu.querySelector('#panelSettings'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };
+    }
+
+    // Replace spread grid with dropdown + topic + start button if not already replaced
+    try {
+      const panelSpread = startMenu.querySelector('#panelSpread');
+      const grid = panelSpread?.querySelector('.spread-grid');
+      const row = panelSpread?.querySelector('.row') || (() => { const r=document.createElement('div'); r.className='row'; panelSpread?.querySelector('.options')?.appendChild(r); return r; })();
+      if (grid) {
+        const lblCount = document.createElement('label'); lblCount.setAttribute('for','selectCount'); lblCount.textContent = '枚数';
+        const sel = document.createElement('select'); sel.id = 'selectCount';
+        [1,2,3,4,5,6,7,8,9,10].forEach(n=>{ const opt=document.createElement('option'); opt.value=`${n}`; opt.textContent = `${n}枚`; sel.appendChild(opt); });
+        const lblTopic = document.createElement('label'); lblTopic.setAttribute('for','readingTopic'); lblTopic.textContent = 'テーマ';
+        const inp = document.createElement('input'); inp.id = 'readingTopic'; inp.type='text'; inp.placeholder='ご相談内容（任意）';
+        const opts = panelSpread.querySelector('.options');
+        opts.insertBefore(lblCount, row);
+        opts.insertBefore(sel, row);
+        opts.insertBefore(lblTopic, row);
+        opts.insertBefore(inp, row);
+        grid.remove();
+        const startBtn = document.createElement('button'); startBtn.id='btnSpreadStart'; startBtn.className='primary'; startBtn.textContent='開始';
+        row.appendChild(startBtn);
+        startBtn.addEventListener('click', () => {
+          const n = parseInt(sel.value||'3',10);
+          const topic = (inp.value||'').trim();
+          try { localStorage.setItem('readingTopic', topic); } catch {}
+          hideStartMenu();
+          startSpread(n);
+        });
+        const backBtn = panelSpread.querySelector('#btnSpreadBack'); if (backBtn) backBtn.textContent = '戻る';
+      }
+    } catch {}
+
+    // Ensure actions bar appears only after all cards are revealed
+    if (typeof enableReveal === 'function'){
+      const __origEnableReveal = enableReveal;
+      enableReveal = function(slots, picks, onComplete){
+        try { if (typeof hideActions === 'function') hideActions(); } catch {}
+        return __origEnableReveal(slots, picks, () => {
+          try { if (typeof onComplete === 'function') onComplete(); } catch {}
+          try { if (typeof showActions === 'function') showActions(); } catch {}
+        });
+      };
+    }
+  } catch {}
+
 
   // Post-build adjustments per request:
   // 1) Remove the visible title "スタートメニュー" from the main panel

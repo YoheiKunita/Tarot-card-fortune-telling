@@ -82,6 +82,13 @@
           <button id="btnAdvise">AIアドバイス</button>
         </div>
         <div id="adviserOut" class="adviser-out" aria-live="polite" style="display:none"></div>
+        <!-- Advice modal overlay (built-in for JS control) -->
+        <div id="adviceOverlay" class="advice-overlay" style="display:none" aria-modal="true" role="dialog">
+          <div class="advice-modal">
+            <div id="adviceContent" class="advice-content"></div>
+            <button id="btnAdviceClose" class="advice-close">戻る</button>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -116,5 +123,6 @@
       })();
     </script>
     <script type="module" src="renderer.js"></script>
+    <script type="module" src="override-advice.js"></script>
   </body>
   </html>
