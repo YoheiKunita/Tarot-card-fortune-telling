@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>タロット占い</title>
+    <title>Arcane Tarot</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -13,6 +13,12 @@
 
     <main>
       <div id="stage">
+        <div id="splash" class="splash" role="dialog" aria-modal="true" aria-label="splash">
+          <div class="splash-inner">
+            <img src="../img/arcane_tarot_title.png" alt="Arcane Tarot" class="splash-title" />
+            <div class="splash-hint">Click to start</div>
+          </div>
+        </div>
         <div id="dim" class="dim" aria-hidden="true"></div>
         <div id="deck" class="deck" aria-label="カードの山">
           <div class="pilecard"></div>
@@ -22,50 +28,7 @@
           <div class="pilecard"></div>
         </div>
 
-        <section class="board">
-          <div class="slot" data-pos="past">
-            <div class="label">過去</div>
-            <div class="card">
-              <div class="inner">
-                <div class="face back">
-                  <img src="../img/back.png" alt="back" />
-                </div>
-                <div class="face front">
-                  <img alt="" />
-                </div>
-              </div>
-            </div>
-            <div class="info"></div>
-          </div>
-          <div class="slot" data-pos="present">
-            <div class="label">現在</div>
-            <div class="card">
-              <div class="inner">
-                <div class="face back">
-                  <img src="../img/back.png" alt="back" />
-                </div>
-                <div class="face front">
-                  <img alt="" />
-                </div>
-              </div>
-            </div>
-            <div class="info"></div>
-          </div>
-          <div class="slot" data-pos="future">
-            <div class="label">未来</div>
-            <div class="card">
-              <div class="inner">
-                <div class="face back">
-                  <img src="../img/back.png" alt="back" />
-                </div>
-                <div class="face front">
-                  <img alt="" />
-                </div>
-              </div>
-            </div>
-            <div class="info"></div>
-          </div>
-        </section>
+        
                 <div id="startMenu" class="start-menu" aria-modal="true" role="dialog">
           <div class="panel">
             <h2>スタートメニュー</h2>
@@ -81,6 +44,7 @@
           <button id="btnRetry" class="primary">もう一度</button>
           <button id="btnAdvise">AIアドバイス</button>
         </div>
+        <div id="adviserDim" class="adviser-dim" aria-hidden="true"></div>
         <div id="adviserOut" class="adviser-out" aria-live="polite" style="display:none"></div>
         <!-- Advice modal overlay (built-in for JS control) -->
         <div id="adviceOverlay" class="advice-overlay" style="display:none" aria-modal="true" role="dialog">
@@ -126,3 +90,5 @@
     <script type="module" src="override-advice.js"></script>
   </body>
   </html>
+
+

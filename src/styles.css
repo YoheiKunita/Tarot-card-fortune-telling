@@ -26,6 +26,11 @@ body{
   background: var(--bg) url('../img/background.png') center/cover no-repeat;
   color: var(--fg);
 }
+/* Splash overlay */
+.splash{ position: fixed; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.55); z-index: 1200; cursor: pointer; }
+.splash-inner{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+.splash-title{ max-width: min(80vw, 720px); width: 80vw; height: auto; filter: drop-shadow(0 12px 40px rgba(0,0,0,0.6)); }
+.splash-hint{ color: var(--fg); opacity: 0.9; font-size: 18px; letter-spacing: 0.06em; }
 /* Cover potential 1px hairline under native menu bar on Windows */
 body::before{
   content: "";
@@ -79,9 +84,8 @@ main{ padding: 24px; }
 .deck .pilecard:nth-child(3){ transform: translate(22px, 18px) rotate(-1deg); }
 .deck .pilecard:nth-child(4){ transform: translate(28px, 22px) rotate(2deg); }
 .deck .pilecard:nth-child(5){ transform: translate(34px, 26px) rotate(-1deg); }
-.board{ display:grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 28px; max-width: 1100px; margin: 0 auto; padding-top: 40px; }
+.board:not(.absolute-board){ display:grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 28px; max-width: 1100px; margin: 0 auto; padding-top: 40px; }
 .slot{ position: relative; display:flex; flex-direction:column; align-items:center; gap: 10px; }
-.slot .label{ display:none; }
 
 .card{ width: var(--card-w); height: var(--card-h); perspective: 900px; position:relative; transition: transform var(--flip-duration) ease; }
 /* Compose base rotation with flip using a CSS variable */
@@ -111,7 +115,7 @@ main{ padding: 24px; }
 .info .ori{ color:#c0c5d0; font-size:12px; margin-left: 6px; }
 
 @media (max-width: 900px){
-  .board{ grid-template-columns: 1fr; justify-items:center; }
+  .board:not(.absolute-board){ grid-template-columns: 1fr; justify-items:center; }
 }
 
 /* Flying card animation element */
@@ -125,15 +129,7 @@ main{ padding: 24px; }
   z-index: 9999;
 }
 
-/* Position label shown at top of card */
-.slot .label{
-  position: absolute;
-  top: 6%; left: 6%; right: 6%;
-  color:#e8ecf7; line-height:1.4; font-size: 14px;
-  padding:6px 10px; background: rgba(0,0,0,0.45);
-  border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
-  box-shadow: 0 6px 14px rgba(0,0,0,0.35); text-align:center;
-}
+/* Removed slot label styling (labels no longer used) */
 
 /* Start menu overlay */
 .start-menu{ position: fixed; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.55); z-index: 1000; }
@@ -149,13 +145,21 @@ main{ padding: 24px; }
 
 /* Adviser output panel */
 .adviser-out{
-  position: fixed; left: 20px; bottom: 20px; z-index: 850;
-  max-width: 520px; padding: 12px 14px; border-radius: 12px;
-  background: rgba(20,24,40,0.92); color: var(--fg);
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0.9); z-index: 1200;
+  max-width: min(80vw, 720px); padding: 16px 18px; border-radius: 14px;
+  background: rgba(20,24,40,0.98); color: var(--fg);
   border:1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 14px 40px rgba(0,0,0,0.5);
-  line-height: 1.6; font-size: 14px; white-space: pre-wrap;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  line-height: 1.7; font-size: 15px; white-space: pre-wrap;
+  opacity: 0; transition: transform 160ms ease, opacity 160ms ease;
 }
+.adviser-out.show{ opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+.adviser-out .controls{ display:flex; justify-content:flex-end; margin-top: 12px; }
+.adviser-out .controls .btn-back{ background: var(--acc); color:#1b1b1b; border:none; padding:10px 16px; border-radius:8px; font-weight:600; cursor:pointer; }
+
+.adviser-dim{ position: fixed; inset: 0; background: rgba(0,0,0,0.7); opacity:0; transition: opacity var(--dim-duration) ease; pointer-events:none; z-index: 1100; }
+.adviser-dim.on{ opacity:1; pointer-events:auto; }
 
 /* Advice modal overlay */
 .advice-overlay{ position: fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.7); z-index: 1100; }

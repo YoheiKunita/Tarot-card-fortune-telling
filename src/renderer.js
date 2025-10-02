@@ -27,13 +27,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   // Apply initial 70% speed
   applySpeedToCSSVars(SPEED);
 
-  // Show position labels on each slot
-  const posMap = { past: '過去', present: '現在', future: '未来' };
-  slots.forEach(s => {
-    const pos = s.getAttribute('data-pos');
-    const l = s.querySelector('.label');
-    if (l) l.textContent = posMap[pos] || '';
-  });
+  // Position labels are no longer used; slots have no label elements.
 
   let mode = null;
   let currentKind = 'three';
@@ -56,9 +50,18 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   function showActions() { actions.classList.add('show'); }
   function hideActions() { actions.classList.remove('show'); }
 
-  // Default mode prepared but not started; show start menu first
+  // Prepare default mode but do not show menu yet (splash first)
   switchMode('three');
-  showStartMenu();
+  try { if (startMenu) startMenu.style.display = 'none'; } catch(_) {}
+  // Splash: click anywhere on stage to start
+  try {
+    const stageEl = document.getElementById('stage');
+    const splash = document.getElementById('splash');
+    if (splash && stageEl) {
+      const onStart = () => { try { splash.style.display = 'none'; } catch(_) {}; showStartMenu(); };
+      stageEl.addEventListener('click', onStart, { once: true });
+    }
+  } catch (_) {}
 
   // --- Settings UI (API Key) ---
   try {
@@ -170,7 +173,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     // Auto-show of actions is handled after reveal completion elsewhere.
     // No-op here to avoid premature display during dealing/partial reveal.
   });
-  observer.observe(boardEl, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  try { if (boardEl) observer.observe(boardEl, { subtree: true, attributes: true, attributeFilter: ['class'] }); } catch (_) {}
 
   // Adviser: generate AI summary/advice from revealed cards
   async function handleAdviseClick(){
@@ -179,7 +182,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
         alert('アドバイス機能が利用できません');
         return;
       }
-      const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+      const slotsAll = Array.from(document.querySelectorAll('#stage .slot'));
       const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
       if (!revealedSlots.length){ alert('カードをめくってから実行してください'); return; }
       const q = window.prompt('質問（任意）を入力してください', '') || '';
@@ -224,7 +227,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
       return { reading: { summary: `フォールバック生成: ${q||'ご質問'}について考えを整理しましょう。`, cards: mapped }, valid: true };
     };
     try {
-      const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+      const slotsAll = Array.from(document.querySelectorAll('#stage .slot'));
       const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
       if (!revealedSlots.length){ if (adviserOutEl) { adviserOutEl.style.display='block'; adviserOutEl.textContent='カードをめくってから実行してください'; } return; }
       const q = window.prompt('お悩み（任意）を入力してください', '') || '';
@@ -256,7 +259,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     } catch (e) {
       console.error(e);
       try {
-        const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+        const slotsAll = Array.from(document.querySelectorAll('#stage .slot'));
         const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
         const cards = revealedSlots.map(sl => ({
           name: sl.dataset.cardName || 'Unknown',
@@ -308,7 +311,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
       const mainOpts = startMenu.querySelector('#panelMain .options');
       if (mainOpts) {
         let resume = startMenu.querySelector('#btnResume');
-        const hasBoard = !!document.querySelector('.board .slot');
+        const hasBoard = !!document.querySelector('#stage .slot');
         if (!resume) {
           resume = document.createElement('button');
           resume.id = 'btnResume';
@@ -456,7 +459,6 @@ import { createOneOracleMode } from './modes/one-oracle.js';
 
   function createSlot(){
     const slot = document.createElement('div'); slot.className = 'slot';
-    const label = document.createElement('div'); label.className = 'label'; slot.appendChild(label);
     const card = document.createElement('div'); card.className = 'card hidden';
     const inner = document.createElement('div'); inner.className = 'inner';
     const back = document.createElement('div'); back.className = 'face back';
@@ -662,7 +664,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
 
   // Build new menu and show it
   buildStartMenu();
-  startMenu.style.display = 'flex';
+  try { startMenu.style.display = 'none'; } catch(_) {}
 
   // Post-build adjustments per proposal: labels, quick starts, and action timing
   try {
@@ -783,12 +785,46 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     const old = document.getElementById('btnAdvise');
     if (!old) return;
     const adviserOutEl = document.getElementById('adviserOut');
+    const adviserDimEl = document.getElementById('adviserDim');
+    function presentAdvice(summary){
+      try {
+        if (!adviserOutEl) return;
+        if (adviserDimEl) adviserDimEl.classList.add('on');
+        adviserOutEl.style.display = 'block';
+        adviserOutEl.classList.remove('show');
+        adviserOutEl.innerHTML = '';
+        void adviserOutEl.offsetWidth;
+        adviserOutEl.classList.add('show');
+        const onEnd = () => {
+          adviserOutEl.removeEventListener('transitionend', onEnd);
+          const content = document.createElement('div'); content.className = 'content'; content.textContent = summary || '';
+          const controls = document.createElement('div'); controls.className = 'controls';
+          const btnBack = document.createElement('button'); btnBack.className = 'btn-back'; btnBack.textContent = '戻る';
+          controls.appendChild(btnBack);
+          adviserOutEl.appendChild(content);
+          adviserOutEl.appendChild(controls);
+          btnBack.addEventListener('click', () => {
+            try {
+              adviserOutEl.classList.remove('show');
+              const hideAfter = () => {
+                adviserOutEl.removeEventListener('transitionend', hideAfter);
+                adviserOutEl.style.display = 'none';
+                if (adviserDimEl) adviserDimEl.classList.remove('on');
+                adviserOutEl.innerHTML = '';
+              };
+              adviserOutEl.addEventListener('transitionend', hideAfter);
+            } catch(_) {}
+          });
+        };
+        adviserOutEl.addEventListener('transitionend', onEnd);
+      } catch(_) {}
+    }
     const btn = old.cloneNode(true);
     old.parentNode.replaceChild(btn, old);
     btn.addEventListener('click', async (ev) => {
       ev.preventDefault();
       try {
-        const slotsAll = Array.from(document.querySelectorAll('.board .slot'));
+        const slotsAll = Array.from(document.querySelectorAll('#stage .slot'));
         const revealedSlots = slotsAll.filter(sl => sl.querySelector('.card').classList.contains('revealed'));
         if (!revealedSlots.length) {
           if (adviserOutEl) { adviserOutEl.style.display='block'; adviserOutEl.textContent='カードをめくってから実行してください'; }
@@ -827,9 +863,11 @@ import { createOneOracleMode } from './modes/one-oracle.js';
         }
         const summary = res.reading && res.reading.summary ? String(res.reading.summary) : '結果を取得しました';
         if (adviserOutEl) { adviserOutEl.style.display='block'; adviserOutEl.textContent = summary; }
+        try { presentAdvice(summary); } catch(_) {}
       } finally {
         btn.disabled = false; btn.textContent = 'AIアドバイス';
       }
     });
   } catch {}
 })();
+

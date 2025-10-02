@@ -24,42 +24,40 @@ function createWindow() {
 }
 
 function buildMenu(win) {
-  const template = [
-    ...(process.platform === 'darwin' ? [{
-      label: app.name,
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'services' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    }] : []),
-    {
-      label: 'メニュー',
-      submenu: [
-        {
-          label: 'スタート',
-          accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N',
-          click: () => { try { win.webContents.send('menu:start'); } catch (_) {} }
-        },
-        {
-          label: '設定',
-          accelerator: process.platform === 'darwin' ? 'Cmd+,' : 'Ctrl+,',
-          click: () => { try { win.webContents.send('settings:open'); } catch (_) {} }
-        },
-        { type: 'separator' },
-        (process.platform === 'darwin'
-          ? { label: '終了', role: 'quit' }
-          : { label: '終了', click: () => { try { app.quit(); } catch (_) {} } })
-      ]
-    }
-  ];
-  const menu = Menu.buildFromTemplate(template);
+  const base = (process.platform === 'darwin') ? [{
+    label: app.name,
+    submenu: [
+      { role: 'about' },
+      { type: 'separator' },
+      { role: 'services' },
+      { type: 'separator' },
+      { role: 'hide' },
+      { role: 'hideOthers' },
+      { role: 'unhide' },
+      { type: 'separator' },
+      { role: 'quit' }
+    ]
+  }] : [];
+  const appMenu = {
+    label: 'メニュー',
+    submenu: [
+      {
+        label: 'スタート',
+        accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N',
+        click: () => { try { win.webContents.send('menu:start'); } catch (_) {} }
+      },
+      {
+        label: '設定',
+        accelerator: process.platform === 'darwin' ? 'Cmd+,' : 'Ctrl+,',
+        click: () => { try { win.webContents.send('settings:open'); } catch (_) {} }
+      },
+      { type: 'separator' },
+      (process.platform === 'darwin'
+        ? { label: '終了', role: 'quit' }
+        : { label: '終了', click: () => { try { app.quit(); } catch (_) {} } })
+    ]
+  };
+  const menu = Menu.buildFromTemplate([...base, appMenu]);
   Menu.setApplicationMenu(menu);
 }
 
