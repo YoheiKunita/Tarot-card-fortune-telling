@@ -13,6 +13,41 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   const startMenu = document.getElementById('startMenu');
   const btnThree = document.getElementById('btnThree');
   const btnOne = document.getElementById('btnOne');
+  // Dynamically replace start menu options: remove 3-card and 1-card, add "はじめる" and "終了"
+  try {
+    const optionsEl = startMenu ? startMenu.querySelector('.options') : null;
+    if (optionsEl) {
+      // Update menu title
+      try { const h2 = startMenu.querySelector('h2'); if (h2) h2.textContent = 'スタートメニュー'; } catch(_) {}
+      // remove old options if present
+      if (btnThree) btnThree.remove();
+      if (btnOne) btnOne.remove();
+      // add start button
+      let btnStart = document.getElementById('btnStart');
+      if (!btnStart) {
+        btnStart = document.createElement('button');
+        btnStart.id = 'btnStart';
+        btnStart.className = 'primary';
+        btnStart.textContent = 'はじめる';
+        optionsEl.appendChild(btnStart);
+      } else {
+        btnStart.textContent = 'はじめる';
+      }
+      // add exit button
+      let btnExit = document.getElementById('btnExit');
+      if (!btnExit) {
+        btnExit = document.createElement('button');
+        btnExit.id = 'btnExit';
+        btnExit.textContent = '終了';
+        optionsEl.appendChild(btnExit);
+      } else {
+        btnExit.textContent = '終了';
+      }
+      // wire up start/exit
+      btnStart.onclick = () => startRun('three');
+      btnExit.onclick = () => { try { window.api && typeof window.api.quit === 'function' ? window.api.quit() : window.close(); } catch(_) { try { window.close(); } catch(_) {} } };
+    }
+  } catch(_) {}
   const actions = document.getElementById('actions');
   const btnMenu = document.getElementById('btnMenu');
   const btnRetry = document.getElementById('btnRetry');
@@ -157,8 +192,14 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     switchMode(currentKind);
     setTimeout(() => mode && mode.start && mode.start(), 10);
   }
+  // Backward-compat if old buttons still exist
   if (btnThree) btnThree.onclick = () => startRun('three');
   if (btnOne) btnOne.onclick = () => startRun('one');
+  // New unified start button
+  try {
+    const btnStart = document.getElementById('btnStart');
+    if (btnStart) btnStart.onclick = () => startRun('three');
+  } catch(_) {}
 
   // Bottom-right actions
   if (btnMenu) btnMenu.onclick = () => { if (mode && mode.reset) mode.reset(); showStartMenu(); };
@@ -274,6 +315,24 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     }
   }
   try { if (btnAdvise) { btnAdvise.removeEventListener('click', handleAdviseClick); btnAdvise.addEventListener('click', robustHandleAdviseClick); } } catch {}
+  // Final start menu simplification (remove 3枚/1枚, rename 詳細な展開→はじめる, add 終了)
+  try {
+    const mainPanel = startMenu && startMenu.querySelector ? startMenu.querySelector('#panelMain') : null;
+    const opts = mainPanel && mainPanel.querySelector ? mainPanel.querySelector('.options') : null;
+    if (opts) {
+      // Title
+      try { const h2 = mainPanel.querySelector('h2'); if (h2) h2.textContent = 'スタートメニュー'; } catch {}
+      // Buttons
+      opts.innerHTML = '';
+      const bStart = document.createElement('button'); bStart.id = 'btnStart'; bStart.className = 'primary'; bStart.textContent = 'はじめる';
+      const bExit = document.createElement('button'); bExit.id = 'btnExit'; bExit.textContent = '終了';
+      const bSettings = document.createElement('button'); bSettings.id = 'btnSettings'; bSettings.textContent = '設定';
+      opts.appendChild(bStart); opts.appendChild(bExit); opts.appendChild(bSettings);
+      bStart.onclick = () => { const p = startMenu.querySelector('#panelSpread'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };
+      bExit.onclick = () => { try { window.api && typeof window.api.quit === 'function' ? window.api.quit() : window.close(); } catch(_) { try { window.close(); } catch(_) {} } };
+      bSettings.onclick = () => { const p = startMenu.querySelector('#panelSettings'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };
+    }
+  } catch {}
 })();
 
 // --- Dynamic UI and spreads override per UI.txt and tarot_spread_1to10.txt ---
@@ -303,6 +362,9 @@ import { createOneOracleMode } from './modes/one-oracle.js';
       if (adviserOut) { adviserOut.style.display = 'none'; adviserOut.textContent = ''; }
       const overlay = document.getElementById('adviceOverlay');
       if (overlay) overlay.style.display = 'none';
+    } catch {}
+
+    try {
     } catch {}
     startMenu.style.display = 'flex';
     showPanel('panelMain');
@@ -678,11 +740,9 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     const mainOpts = mainPanel?.querySelector('.options');
     if (mainOpts) {
       mainOpts.innerHTML = '';
-      const b3 = document.createElement('button'); b3.id = 'btnQuickThree'; b3.className = 'primary'; b3.textContent = '3枚リーディング';
-      const b1 = document.createElement('button'); b1.id = 'btnQuickOne'; b1.textContent = '1枚引き';
       const bMore = document.createElement('button'); bMore.id = 'btnMore'; bMore.textContent = '詳細な展開を選ぶ…';
       const bSettings = document.createElement('button'); bSettings.id = 'btnSettings'; bSettings.textContent = '設定';
-      mainOpts.appendChild(b3); mainOpts.appendChild(b1); mainOpts.appendChild(bMore); mainOpts.appendChild(bSettings);
+      mainOpts.appendChild(bMore); mainOpts.appendChild(bSettings);
       b3.onclick = () => { hideStartMenu(); startSpread(3); };
       b1.onclick = () => { hideStartMenu(); startSpread(1); };
       bMore.onclick = () => { const p = startMenu.querySelector('#panelSpread'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };

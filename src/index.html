@@ -57,35 +57,6 @@
     </main>
 
     <script src="tarot-data.js"></script>
-    <script>
-      // Fallback stub for window.adviser when not running via Electron preload
-      (function(){
-        if (!window.adviser || typeof window.adviser.generate !== 'function') {
-          window.adviser = {
-            generate: async function(input){
-              try { input = input || {}; } catch(_) { input = {}; }
-              const question = (input && input.question) ? String(input.question) : '';
-              const cardsIn = (input && Array.isArray(input.cards)) ? input.cards : [];
-              const cards = cardsIn.map(function(c){
-                var name = c && (c.name || c.cardName) || 'Unknown';
-                var pos = c && c.position === 'reversed' ? 'reversed' : 'upright';
-                return {
-                  cardName: name,
-                  position: pos,
-                  meaning: name + ' (' + (pos==='reversed'?'逆位置':'正位置') + ') は「' + (question || 'あなたの状況') + '」について内省を促します。',
-                  advice: 'まずは小さな一歩から。'
-                };
-              });
-              return {
-                reading: { summary: 'フォールバック生成: ' + (question || 'ご質問') + 'について、まずは小さな行動から始めましょう。', cards: cards },
-                valid: true,
-                meta: { inferenceId: 'inline-stub-html', userId: null, durationMs: 0, approxTokens: 0, cached: false, reason: null, backend: 'stub' }
-              };
-            }
-          };
-        }
-      })();
-    </script>
     <script type="module" src="renderer.js"></script>
     <script type="module" src="override-advice.js"></script>
   </body>

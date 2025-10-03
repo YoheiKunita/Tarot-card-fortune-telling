@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -18,6 +18,17 @@ function createWindow() {
 
   win.once('ready-to-show', () => win.show());
   win.loadFile('src/index.html');
+  // Enable F12 to toggle DevTools
+  try {
+    win.webContents.on('before-input-event', (event, input) => {
+      try {
+        if (input && input.type === 'keyDown' && input.key === 'F12') {
+          event.preventDefault();
+          if (win && win.webContents) win.webContents.toggleDevTools();
+        }
+      } catch (_) {}
+    });
+  } catch (_) {}
   // Ensure menu bar is visible
   try { buildMenu(win); } catch (_) {}
   try { win.setMenuBarVisibility(true); } catch (_) {}
@@ -73,3 +84,7 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// IPC: allow renderer to request app quit (for 終了 button)
+try {
+  ipcMain.on('app:quit', () => { try { app.quit(); } catch (_) {} });
+} catch (_) {}

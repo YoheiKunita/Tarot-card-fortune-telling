@@ -42,7 +42,9 @@ contextBridge.exposeInMainWorld('api', {
     const handler = () => cb();
     ipcRenderer.on('settings:open', handler);
     return () => ipcRenderer.off('settings:open', handler);
-  }
+  },
+  // Allow renderer to request app quit
+  quit: () => { try { ipcRenderer.send('app:quit'); } catch(_) {} }
 });
 
 // Adviser API: generate reading from selected cards
