@@ -79,6 +79,10 @@ import { createOneOracleMode } from './modes/one-oracle.js';
 
   function showStartMenu() {
     actions.classList.remove('show');
+    // Ensure adviser overlay is not blocking clicks
+    try { const dim = document.getElementById('adviserDim'); if (dim) dim.classList.remove('on'); } catch(_) {}
+    try { const out = document.getElementById('adviserOut'); if (out) { out.style.display='none'; out.textContent=''; } } catch(_) {}
+    try { const overlay = document.getElementById('adviceOverlay'); if (overlay) overlay.style.display='none'; } catch(_) {}
     startMenu.style.display = 'flex';
   }
   function hideStartMenu() { startMenu.style.display = 'none'; }
@@ -98,91 +102,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     }
   } catch (_) {}
 
-  // --- Settings UI (API Key) ---
-  try {
-    // Add Settings button inside Start Menu options
-    const btnSettings = document.createElement('button');
-    btnSettings.id = 'btnSettings';
-    btnSettings.textContent = '設定';
-    btnSettings.title = '設定 (OpenAI API Keyなど)';
-    const optionsEl = startMenu ? startMenu.querySelector('.options') : null;
-    if (optionsEl) optionsEl.appendChild(btnSettings);
-
-    // Build modal
-    const settings = document.createElement('div');
-    settings.id = 'settings';
-    settings.className = 'start-menu';
-    settings.style.display = 'none';
-    settings.setAttribute('aria-modal', 'true');
-    settings.setAttribute('role', 'dialog');
-    settings.innerHTML = `
-      <div class="panel">
-        <h2>設定</h2>
-        <div class="options" style="gap:12px; align-items:stretch">
-          <label style="display:flex;flex-direction:column;gap:6px">
-            <span>OpenAI API Key</span>
-            <input id="inpApiKey" type="password" placeholder="sk-..." />
-          </label>
-          <label style="display:flex;flex-direction:column;gap:6px">
-            <span>Model</span>
-            <input id="inpModel" type="text" placeholder="gpt-4o-mini" />
-          </label>
-          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px">
-            <button id="btnSettingsCancel">キャンセル</button>
-            <button id="btnSettingsSave" class="primary">保存</button>
-          </div>
-        </div>
-      </div>`;
-    const stage = document.getElementById('stage') || document.body;
-    stage.appendChild(settings);
-
-    const inpApiKey = settings.querySelector('#inpApiKey');
-    const inpModel = settings.querySelector('#inpModel');
-    const btnSettingsCancel = settings.querySelector('#btnSettingsCancel');
-    const btnSettingsSave = settings.querySelector('#btnSettingsSave');
-
-    function loadSettings() {
-      try {
-        inpApiKey.value = localStorage.getItem('openai.apiKey') || '';
-        inpModel.value = localStorage.getItem('openai.model') || 'gpt-4o-mini';
-      } catch (_) {}
-    }
-    function openSettings() {
-      loadSettings();
-      // Hide start menu while editing settings
-      try { startMenu.style.display = 'none'; } catch(_) {}
-      settings.style.display = 'flex';
-    }
-    function closeSettings() {
-      settings.style.display = 'none';
-      // Return to start menu after closing settings
-      try { showStartMenu(); } catch(_) {}
-    }
-
-    btnSettings?.addEventListener('click', openSettings);
-    btnSettingsCancel?.addEventListener('click', closeSettings);
-    btnSettingsSave?.addEventListener('click', () => {
-      try {
-        localStorage.setItem('openai.apiKey', inpApiKey.value.trim());
-        localStorage.setItem('openai.model', inpModel.value.trim() || 'gpt-4o-mini');
-      } catch (_) {}
-      closeSettings();
-    });
-
-    // Keyboard shortcut: Ctrl+,
-    window.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); }
-      if (e.key === 'Escape' && settings.style.display !== 'none') { e.preventDefault(); closeSettings(); }
-    });
-
-    // If main process triggers settings:open, open here (preload bridge)
-    if (window.api && typeof window.api.onOpenSettings === 'function') {
-      window.api.onOpenSettings(() => openSettings());
-    }
-    if (window.api && typeof window.api.onOpenStartMenu === 'function') {
-      window.api.onOpenStartMenu(() => showStartMenu());
-    }
-  } catch (e) { /* ignore UI errors */ }
+  // Remove legacy overlay-based settings UI in favor of panelSettings
 
   // Start menu selections
   function startRun(kind) {
@@ -199,6 +119,113 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   try {
     const btnStart = document.getElementById('btnStart');
     if (btnStart) btnStart.onclick = () => startRun('three');
+  } catch(_) {}
+
+  // Fallback delegation to keep buttons working after dynamic rebuilds
+  try {
+    if (startMenu && !startMenu.__delegated) {
+      startMenu.__delegated = true;
+      startMenu.addEventListener('click', (ev) => {
+        const btn = ev.target && ev.target.closest('button');
+        if (!btn) return;
+        switch (btn.id) {
+          case 'btnThree': hideStartMenu(); startRun('three'); break;
+          case 'btnOne': hideStartMenu(); startRun('one'); break;
+          case 'btnMore': {
+            const p = startMenu.querySelector('#panelSpread');
+            if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; }
+            break;
+          }
+          case 'btnSettings': {
+            const p = startMenu.querySelector('#panelSettings, #panelSetting');
+            if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; }
+            break;
+          }
+          case 'btnSaveSettings': {
+            try {
+              const speedRange = startMenu.querySelector('#speedRange');
+              const inpApiKey = startMenu.querySelector('#inpApiKey');
+              const inpModel = startMenu.querySelector('#inpModel');
+              if (speedRange) {
+                const v = parseFloat(speedRange.value||'0.7');
+                localStorage.setItem('speedMult', `${v}`);
+                applySpeedToCSSVars(v);
+              }
+              if (inpApiKey) localStorage.setItem('openai.apiKey', (inpApiKey.value||'').trim());
+              if (inpModel) localStorage.setItem('openai.model', ((inpModel.value||'').trim()||'gpt-4o-mini'));
+            } catch(_) {}
+            // Back to main panel
+            const main = startMenu.querySelector('#panelMain');
+            if (main) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); main.style.display='block'; }
+            break;
+          }
+          case 'btnCancelSettings': {
+            const main = startMenu.querySelector('#panelMain');
+            if (main) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); main.style.display='block'; }
+            break;
+          }
+          case 'btnStart': {
+            // If panels exist, go to spread selection; otherwise start default
+            const panel = startMenu.querySelector('#panelSpread');
+            if (panel) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); panel.style.display='block'; }
+            else { hideStartMenu(); startRun('three'); }
+            break;
+          }
+          case 'btnSpreadStart': {
+            const sel = document.getElementById('selectCount');
+            const n = sel ? parseInt(sel.value||'3',10) : 3;
+            hideStartMenu();
+            startSpread(n);
+            break;
+          }
+          case 'btnSpreadBack': {
+            const panel = startMenu.querySelector('#panelMain');
+            if (panel) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); panel.style.display='block'; }
+            break;
+          }
+          case 'btnExit': {
+            const confirmPanel = startMenu.querySelector('#panelExit');
+            if (confirmPanel) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); confirmPanel.style.display='block'; }
+            else {
+              try { if (window.api && typeof window.api.quit === 'function') window.api.quit(); else window.close(); } catch(_) { try { window.close(); } catch(_) {} }
+            }
+            break;
+          }
+          case 'btnExitYes': {
+            try { if (window.api && typeof window.api.quit === 'function') window.api.quit(); else window.close(); } catch(_) { try { window.close(); } catch(_) {} }
+            break;
+          }
+          case 'btnExitNo': {
+            const panel = startMenu.querySelector('#panelMain');
+            if (panel) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); panel.style.display='block'; }
+            break;
+          }
+          
+        }
+      });
+    }
+  } catch(_) {}
+
+  // Keyboard shortcuts for new panel-based settings
+  try {
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        showStartMenu();
+        const p = startMenu.querySelector('#panelSettings, #panelSetting');
+        if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; }
+      } else if (e.key === 'Escape') {
+        // If start menu visible and not on main, go back to main
+        const visible = startMenu && startMenu.style.display !== 'none';
+        if (visible) {
+          const main = startMenu.querySelector('#panelMain');
+          if (main) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); main.style.display='block'; }
+        }
+      }
+    });
+    if (window.api && typeof window.api.onOpenSettings === 'function') {
+      window.api.onOpenSettings(() => { showStartMenu(); const p = startMenu.querySelector('#panelSettings'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } });
+    }
   } catch(_) {}
 
   // Bottom-right actions
@@ -406,15 +433,15 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   // Replace start menu content
   function buildStartMenu(){
     if (!startMenu) return;
-    startMenu.innerHTML = `
-      <div class="panel" id="panelMain">
-        <h2>スタートメニュー</h2>
-        <div class="options">
-          <button id="btnStart" class="primary">スタート</button>
-          <button id="btnSettings">設定</button>
-          <button id="btnExit">終了</button>
+      startMenu.innerHTML = `
+        <div class="panel" id="panelMain">
+          <h2>スタートメニュー</h2>
+          <div class="options">
+            <button id="btnStart" class="primary">スタート</button>
+            <button id="btnSettings">設定</button>
+            <button id="btnExit">終了</button>
+          </div>
         </div>
-      </div>
       <div class="panel" id="panelSpread" style="display:none">
         <h2>カード枚数を選択</h2>
         <div class="options">
@@ -461,6 +488,18 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     const t = startMenu.querySelector(`#${id}`);
     if (t) t.style.display = 'block';
   }
+  function showPanelAny(){
+    const panels = Array.from(startMenu.querySelectorAll('.panel'));
+    panels.forEach(p => p.style.display = 'none');
+    for (let i=0;i<arguments.length;i++){
+      const id = arguments[i];
+      const t = startMenu.querySelector(`#${id}`);
+      if (t) { t.style.display = 'block'; return; }
+    }
+    // Fallback to main
+    const main = startMenu.querySelector('#panelMain');
+    if (main) main.style.display = 'block';
+  }
 
   function wireStartMenu(){
     const btnStart = startMenu.querySelector('#btnStart');
@@ -478,7 +517,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
 
     // Start button: go to spread selection (count + topic)
     if (btnStart) btnStart.onclick = () => { showPanel('panelSpread'); };
-    if (btnSettings) btnSettings.onclick = () => { showPanel('panelSettings'); initSettings(); };
+    if (btnSettings) btnSettings.onclick = () => { showPanelAny('panelSettings','panelSetting'); initSettings(); };
     if (btnExit) btnExit.onclick = () => showPanel('panelExit');
     if (btnSpreadBack) btnSpreadBack.onclick = () => showPanel('panelMain');
     if (btnExitNo) btnExitNo.onclick = () => showPanel('panelMain');
@@ -743,10 +782,9 @@ import { createOneOracleMode } from './modes/one-oracle.js';
       const bMore = document.createElement('button'); bMore.id = 'btnMore'; bMore.textContent = '詳細な展開を選ぶ…';
       const bSettings = document.createElement('button'); bSettings.id = 'btnSettings'; bSettings.textContent = '設定';
       mainOpts.appendChild(bMore); mainOpts.appendChild(bSettings);
-      b3.onclick = () => { hideStartMenu(); startSpread(3); };
-      b1.onclick = () => { hideStartMenu(); startSpread(1); };
+      // Quick start buttons (b3/b1) were removed; use delegated handlers instead
       bMore.onclick = () => { const p = startMenu.querySelector('#panelSpread'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };
-      bSettings.onclick = () => { const p = startMenu.querySelector('#panelSettings'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };
+      bSettings.onclick = () => { const p = startMenu.querySelector('#panelSettings, #panelSetting'); if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; } };
     }
 
     // Replace spread grid with dropdown + topic + start button if not already replaced
