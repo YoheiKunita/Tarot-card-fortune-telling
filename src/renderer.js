@@ -1,7 +1,5 @@
 // Entry point: wire modes, speed, start menu, and actions
 import { applySpeedToCSSVars, SPEED, shuffle, createFlying, createDealingFlight, setFrontOnly, sleep } from './modes/shared.js';
-import { createThreeCardMode } from './modes/three-card.js';
-import { createOneOracleMode } from './modes/one-oracle.js';
 
 (() => {
   const startBtn = document.getElementById('startBtn');
@@ -64,18 +62,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
 
   // Position labels are no longer used; slots have no label elements.
 
-  let mode = null;
-  let currentKind = 'three';
-
-  function makeMode(kind) {
-    const ctx = { startBtn, slots, deckEl, dimEl, blank: BLANK_DATA_URI };
-    return kind === 'one' ? createOneOracleMode(ctx) : createThreeCardMode(ctx);
-  }
-
-  function switchMode(kind) {
-    mode = makeMode(kind);
-    mode.reset();
-  }
+  // Legacy mode system removed; dynamic spread flow is used instead
 
   function showStartMenu() {
     actions.classList.remove('show');
@@ -89,8 +76,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   function showActions() { actions.classList.add('show'); }
   function hideActions() { actions.classList.remove('show'); }
 
-  // Prepare default mode but do not show menu yet (splash first)
-  switchMode('three');
+  // No-op: board initializes on first spread start
   try { if (startMenu) startMenu.style.display = 'none'; } catch(_) {}
   // Splash: click anywhere on stage to start
   try {
@@ -106,15 +92,12 @@ import { createOneOracleMode } from './modes/one-oracle.js';
 
   // Start menu selections
   function startRun(kind) {
-    currentKind = kind === 'one' ? 'one' : 'three';
+    const n = (kind === 'one') ? 1 : 3;
     hideStartMenu();
     hideActions();
-    switchMode(currentKind);
-    setTimeout(() => mode && mode.start && mode.start(), 10);
+    startSpread(n);
   }
-  // Backward-compat if old buttons still exist
-  if (btnThree) btnThree.onclick = () => startRun('three');
-  if (btnOne) btnOne.onclick = () => startRun('one');
+  // Backward-compat removed: legacy buttons are no longer in the DOM
   // New unified start button
   try {
     const btnStart = document.getElementById('btnStart');
@@ -129,8 +112,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
         const btn = ev.target && ev.target.closest('button');
         if (!btn) return;
         switch (btn.id) {
-          case 'btnThree': hideStartMenu(); startRun('three'); break;
-          case 'btnOne': hideStartMenu(); startRun('one'); break;
+          // Legacy buttons (btnThree/btnOne) are no longer present
           case 'btnMore': {
             const p = startMenu.querySelector('#panelSpread');
             if (p) { Array.from(startMenu.querySelectorAll('.panel')).forEach(x=>x.style.display='none'); p.style.display='block'; }
@@ -229,11 +211,11 @@ import { createOneOracleMode } from './modes/one-oracle.js';
   } catch(_) {}
 
   // Bottom-right actions
-  if (btnMenu) btnMenu.onclick = () => { if (mode && mode.reset) mode.reset(); showStartMenu(); };
-  if (btnRetry) btnRetry.onclick = () => { hideActions(); switchMode(currentKind); setTimeout(() => mode && mode.start && mode.start(), 10); };
+  if (btnMenu) btnMenu.onclick = () => { showStartMenu(); };
+  if (btnRetry) btnRetry.onclick = () => { hideActions(); startSpread(lastCount || 3); };
 
-  // Legacy start button still works if present
-  if (startBtn) startBtn.addEventListener('click', () => mode.start());
+  // Legacy start button still works if present (start 3-card spread)
+  if (startBtn) startBtn.addEventListener('click', () => startSpread(3));
 
   // Reveal completion watcher
   const boardEl = document.querySelector('.board');
@@ -397,7 +379,7 @@ import { createOneOracleMode } from './modes/one-oracle.js';
     showPanel('panelMain');
     // Ensure a Resume button exists to return to board
     try {
-      const mainOpts = startMenu.querySelector('#panelMain .options');
+      const mainOpts = null; // removed btnResume from panelMain
       if (mainOpts) {
         let resume = startMenu.querySelector('#btnResume');
         const hasBoard = !!document.querySelector('#stage .slot');

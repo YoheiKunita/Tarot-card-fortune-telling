@@ -5,8 +5,7 @@
   "main": "main.js",
   "description": "Electron app for three-card (past-present-future) tarot reading",
   "scripts": {
-    "start": "electron .",
-    "test:adviser": "tarot-adviser-test\\doc\\tarot-adviser-test\\run-all.cmd"
+    "start": "electron ."
   },
   "devDependencies": {
     "electron": "^31.0.0"

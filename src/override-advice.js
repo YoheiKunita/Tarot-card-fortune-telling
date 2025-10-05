@@ -6,7 +6,7 @@
   function ensureResumeOnMenu(){
     try{
       const startMenu = qs('#startMenu'); if (!startMenu) return;
-      const mainOpts = qs('#panelMain .options', startMenu) || qs('.panel .options', startMenu);
+      const mainOpts = null; // removed btnResume creation in panelMain
       if (!mainOpts) return;
       let resume = qs('#btnResume', startMenu);
       const hasBoard = !!qs('.board .slot');

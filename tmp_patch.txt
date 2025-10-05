@@ -1,9 +1,0 @@
-*** Begin Patch
-*** Update File: main.js
-@@
--  win.loadFile('src/index.html');
--  buildMenu(win);
-+  win.loadFile('src/index.html');
-+  // Remove application menu per requirement
-+  Menu.setApplicationMenu(null);
-*** End Patch
